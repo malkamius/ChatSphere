@@ -1,0 +1,3 @@
+transformers
+mysql-connector-python
+filelock
