@@ -19,12 +19,12 @@ class ConfirmEmailPage(View):
         token = request.args.get("token")
         
         user = self.user_manager.get_user(email_address=email)
-        if user.confirm_uuid == token:
+        if user.confirm_uuid == token and not user.email_confirmed:
             user.email_confirmed = True
             self.user_manager.update_user(user)
             error = None
         else:
-            error = "Account not found or invalid token."
-            flash("Account not found or invalid token.")
+            error = "Account not found, already confirmed, or invalid token."
+            flash("Account not found, already confirmed, or invalid token.")
 
         return render_template(self.template, error=error)
