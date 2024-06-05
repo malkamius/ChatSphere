@@ -21,6 +21,8 @@ class LoginPage(View):
             if user:
                 if user.locked_out:
                     return render_template(self.template, error_text='User locked out. Please wait a while and try again.')
+                elif not user.email_confirmed:
+                    return render_template(self.template, error_text='You have not confirmed your email address yet.')
                 elif user.check_password(password):
                     login_user(user, remember=True)
                     return redirect(url_for('/Index'))

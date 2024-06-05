@@ -8,11 +8,11 @@ def strip_ansi_codes(text):
 
 # Custom formatter that strips ANSI codes
 class StripAnsiFormatter(logging.Formatter):
-    def format(self, record):
+    def format(self, record: logging.LogRecord):
         original = super().format(record)
         return strip_ansi_codes(original)
         
-def getLogger(config, loggername):
+def getLogger(config, loggername: str) -> logging.Logger:
     if config.DEBUG:
         loglevel = logging.DEBUG
     elif config.INFO:

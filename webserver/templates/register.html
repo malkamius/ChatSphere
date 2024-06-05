@@ -3,4 +3,51 @@
 {% block title %}Register{% endblock %}
 
 {% block content %}
+<h1>Register</h1>
+
+<div class="row">
+    <div class="col-md-4">
+        <form id="registerForm" method="post">
+            {{ form.hidden_tag() }}
+            <h2>Create a new account.</h2>
+            <hr />
+            <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+            <div class="form-floating mb-3">
+                {{ form.email(class="form-control") }}
+                {{ form.email.label(class="form-label") }}
+                {% for error in form.email.errors %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="form-floating mb-3">
+                {{ form.password(class="form-control") }}
+                {{ form.password.label(class="form-label") }}
+                {% for error in form.password.errors %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <div class="form-floating mb-3">
+                {{ form.confirmpassword(class="form-control") }}
+                {{ form.confirmpassword.label(class="form-label") }}
+                {% for error in form.confirmpassword.errors %}
+                    <div class="alert alert-danger">{{ error }}</div>
+                {% endfor %}
+            </div>
+            {{ form.submit(class="btn btn-primary") }}
+        </form>
+    </div>
+    <div class="col-md-6 col-md-offset-2">
+        <section>
+            <h3>Use another service to log in.</h3>
+            <hr />
+			<form id="external-account" action="{{ url_for('/Account/ExternalLogin', returnUrl=request.args.get('returnUrl', '/')) }}" method="post" class="form-horizontal">
+				<div>
+					<p>
+						<button type="submit" class="btn btn-primary" name="provider" value="Google" title="Log in using your Google account">Google</button>
+					</p>
+				</div>
+			</form>
+        </section>
+    </div>
+</div>
 {% endblock %}

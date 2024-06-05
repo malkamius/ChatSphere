@@ -11,6 +11,4 @@ class LogoutPage(View):
         
     def dispatch_request(self):
         logout_user()
-        session.clear()
-        
         return redirect(url_for('/Index'))

@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block title %}Account Confirmation{% endblock %}
+
+{% block content %}
+{% if error %}
+Account confirmation failed. <br />
+{{ error }}
+{% else %}
+    Your account has been confirmed, click <a href="{{ url_for('/Account/Login') }}">here</a> to log in.
+{% endif %}
+{% endblock %}
