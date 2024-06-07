@@ -4,8 +4,10 @@
 
 {% block content %}
 {% if error %}
+<div class="alert alert-danger">
 Account confirmation failed. <br />
 {{ error }}
+</div>
 {% else %}
     Your account has been confirmed, click <a href="{{ url_for('/Account/Login') }}">here</a> to log in.
 {% endif %}

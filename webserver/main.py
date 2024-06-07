@@ -42,24 +42,34 @@ bcrypt = Bcrypt(app)
 
 user_manager = UserManager(logger, bcrypt)
 
+
 # Get the current directory of the script
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
+def load_secrets(path):
+    if os.path.exists(path):
+        with open(path, 'r') as file:
+            return json.load(file)    
+    return None
+
 # Construct the path to the email_secrets.json file
-secrets_file_path = os.path.join(script_dir, '..', 'secrets', 'email_secrets.json')
+secrets_file_path = os.path.join(script_dir, '..', 'live-secrets', 'secrets.json')
+secrets = load_secrets(secrets_file_path)
+
+secrets_file_path = os.path.join(script_dir, '..', 'secrets', 'secrets.json')
+if not secrets:
+    secrets = load_secrets(secrets_file_path)
+
+app.config['MAIL_SERVER'] = secrets["mail-server"]
+app.config['MAIL_PORT'] = secrets["mail-port"]
+app.config['MAIL_USE_TLS'] = secrets["mail-TLS"]
+app.config['MAIL_USERNAME'] = secrets["mail-email"]
+app.config['MAIL_PASSWORD'] = secrets["mail-password"]
+app.config['MAIL_DEFAULT_SENDER'] = secrets["mail-email"]
 
 mail = None
 
-if os.path.exists(secrets_file_path):
-    with open(secrets_file_path, 'r') as file:
-        email_secrets = json.load(file)
-    app.config['MAIL_SERVER'] = email_secrets["server"]
-    app.config['MAIL_PORT'] = email_secrets["port"]
-    app.config['MAIL_USE_TLS'] = False
-    app.config['MAIL_USERNAME'] = email_secrets["email"]
-    app.config['MAIL_PASSWORD'] = email_secrets["password"]
-    app.config['MAIL_DEFAULT_SENDER'] = email_secrets["email"]
-
+if app.config['MAIL_SERVER'] != "" and app.config['MAIL_USERNAME'] != "":
     mail = Mail(app)
 
 # admin = user_manager.get_user_by_email("cking999@gmail.com")

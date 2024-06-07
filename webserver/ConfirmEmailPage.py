@@ -25,6 +25,6 @@ class ConfirmEmailPage(View):
             error = None
         else:
             error = "Account not found, already confirmed, or invalid token."
-            flash("Account not found, already confirmed, or invalid token.")
+            #flash("Account not found, already confirmed, or invalid token.")
 
         return render_template(self.template, error=error)
