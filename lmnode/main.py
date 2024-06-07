@@ -18,39 +18,16 @@ import os
 
 from shared.config import DevelopmentConfig
 from shared.ansi_logger import getLogger
-
-
-lockfile = "process.lock"
-lock = FileLock(lockfile, timeout=1)
-
-# Get the fully qualified domain name
-fqdn = socket.getfqdn()
-
-# Print the fully qualified domain name
-print(f"The fully qualified domain name is: {fqdn}")
-
-namespace = uuid.NAMESPACE_DNS
-guid = uuid.uuid3(namespace, fqdn)
-
-# Print the GUID
-print(f"Generated GUID: {guid}")
-
-config = DevelopmentConfig()
-
-
     
 # Configure the logging
 # logging.basicConfig(level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
 
-logger = getLogger(config, __name__)
-      
-# Get the current time
-current_time = datetime.now()
 
 class TextGenerator:
-    def __init__(self):
+    def __init__(self, logger):
+        self.logger = logger
         self.initialize_model()
-
+        
     def initialize_model(self):
         model_name = "leliuga/Phi-3-mini-128k-instruct-bnb-4bit"
         model_config = AutoConfig.from_pretrained(
@@ -93,8 +70,7 @@ class TextGenerator:
             generated_texts.append(generated_text)
         return generated_texts
 
-def fetch_pending_requests(batch_size):
-    global config
+def fetch_pending_requests(config, batch_size):
     connection = config.get_db_connection()
     cursor = connection.cursor(dictionary=True)
     cursor.execute(
@@ -112,8 +88,8 @@ def fetch_pending_requests(batch_size):
     connection.close()
     return requests
 
-def fetch_previous_messages(session_id):
-    global config
+def fetch_previous_messages(config, session_id):
+    
     connection = config.get_db_connection()
     cursor = connection.cursor(dictionary=True)
     cursor.execute(
@@ -147,8 +123,8 @@ def fetch_previous_messages(session_id):
 
     return combined_messages
 
-def update_response_and_request(request_id, generated_text, is_complete):
-    global config
+def update_response_and_request(config, request_id, generated_text, is_complete):
+
     connection = config.get_db_connection()
     cursor = connection.cursor()
     status = 'completed' if is_complete else 'pending'
@@ -161,8 +137,8 @@ def update_response_and_request(request_id, generated_text, is_complete):
     cursor.close()
     connection.close()
 
-def cleanup_stale_requests():
-    global config
+def cleanup_stale_requests(config):
+
     connection = config.get_db_connection()
     cursor = connection.cursor()
     cursor.execute(
@@ -176,9 +152,9 @@ def cleanup_stale_requests():
     cursor.close()
     connection.close()
 
-def process_requests():
+def process_requests(config, logger):
     logger.info("\033[1;32mInitializing LLM Pipeline, this could take some time.\033[0m");
-    text_generator = TextGenerator()
+    text_generator = TextGenerator(logger)
     batch_size = 10
     last_cleanup_time = time.time()
     cleanup_interval = 300  # 5 minutes in seconds
@@ -187,10 +163,10 @@ def process_requests():
     while True:
         current_time = time.time()
         if current_time - last_cleanup_time > cleanup_interval:
-            cleanup_stale_requests()
+            cleanup_stale_requests(config)
             last_cleanup_time = current_time
             
-        requests = fetch_pending_requests(batch_size)
+        requests = fetch_pending_requests(config, batch_size)
         
         if not requests:
             time.sleep(0.5)
@@ -207,7 +183,7 @@ def process_requests():
             last_text = request['generated_text']
             user_message = {'role': 'user', 'content': request_text}
             
-            previous_messages = fetch_previous_messages(session_id)
+            previous_messages = fetch_previous_messages(config, session_id)
             previous_messages.insert(0, user_message)
             
             messages_batch.append({
@@ -222,14 +198,36 @@ def process_requests():
             generated_text = generated_texts[i]
             request_id = request['id']
             is_complete = False  # Implement your logic to determine if the response is complete
-            update_response_and_request(request_id, generated_text, is_complete)
+            update_response_and_request(config, request_id, generated_text, is_complete)
         logger.info(f"Done generating (max of {max_new_tokens_per_request} per request) new tokens for {num_requests} requests.");
+
+def run():
+    lockfile = "process.lock"
+    lock = FileLock(lockfile, timeout=1)
+
+    # Get the fully qualified domain name
+    fqdn = socket.getfqdn()
+
+    # Print the fully qualified domain name
+    print(f"The fully qualified domain name is: {fqdn}")
+
+    namespace = uuid.NAMESPACE_DNS
+    guid = uuid.uuid3(namespace, fqdn)
+
+    # Print the GUID
+    print(f"Generated GUID: {guid}")
+
+    config = DevelopmentConfig()
+
+    logger = getLogger(config, __name__)
         
-if __name__ == "__main__":
+    # Get the current time
+    current_time = datetime.now()
+
     try:
         with lock:
             try:
-                process_requests()  # For example, your main process function
+                process_requests(config, logger)  # For example, your main process function
             finally:
                 logger.info("\033[1;33mPerforming cleanup...\033[0m");
     except Timeout:
@@ -241,3 +239,5 @@ if __name__ == "__main__":
         #todo lock requests with pid? set them to not locked?
         #logging.info("Cleanup done.")
         logger.info("\033[1;31mExiting the program...\033[0m");
+if __name__ == "__main__":
+    run()

@@ -24,93 +24,93 @@ from shared.identity_db_config import IdentityDevelopmentConfig
 from .IdentityDbContext import UserManager
 from flask_mail import Mail, Message
 
+def run():
+    id_config = IdentityDevelopmentConfig()
 
-id_config = IdentityDevelopmentConfig()
+    config = DevelopmentConfig()
+    logger = getLogger(config, __name__)
 
-config = DevelopmentConfig()
-logger = getLogger(config, __name__)
+    app = Flask(__name__)
 
-app = Flask(__name__)
+    app.secret_key = config.SESSION_SECRET_KEY
+    app.config['SECURITY_PASSWORD_SALT'] = config.SESSION_SECRET_KEY
 
-app.secret_key = config.SESSION_SECRET_KEY
-app.config['SECURITY_PASSWORD_SALT'] = config.SESSION_SECRET_KEY
+    login_manager = LoginManager(app)
+    login_manager.init_app(app)
+    login_manager.login_view = '/Account/Login'
+    bcrypt = Bcrypt(app)
 
-login_manager = LoginManager(app)
-login_manager.init_app(app)
-login_manager.login_view = '/Account/Login'
-bcrypt = Bcrypt(app)
-
-user_manager = UserManager(logger, bcrypt)
+    user_manager = UserManager(logger, bcrypt)
 
 
-# Get the current directory of the script
-script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Get the current directory of the script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
-def load_secrets(path):
-    if os.path.exists(path):
-        with open(path, 'r') as file:
-            return json.load(file)    
-    return None
+    def load_secrets(path):
+        if os.path.exists(path):
+            with open(path, 'r') as file:
+                return json.load(file)    
+        return None
 
-# Construct the path to the email_secrets.json file
-secrets_file_path = os.path.join(script_dir, '..', 'live-secrets', 'secrets.json')
-secrets = load_secrets(secrets_file_path)
-
-secrets_file_path = os.path.join(script_dir, '..', 'secrets', 'secrets.json')
-if not secrets:
+    # Construct the path to the email_secrets.json file
+    secrets_file_path = os.path.join(script_dir, '..', 'live-secrets', 'secrets.json')
     secrets = load_secrets(secrets_file_path)
 
-app.config['MAIL_SERVER'] = secrets["mail-server"]
-app.config['MAIL_PORT'] = secrets["mail-port"]
-app.config['MAIL_USE_TLS'] = secrets["mail-TLS"]
-app.config['MAIL_USERNAME'] = secrets["mail-email"]
-app.config['MAIL_PASSWORD'] = secrets["mail-password"]
-app.config['MAIL_DEFAULT_SENDER'] = secrets["mail-email"]
+    secrets_file_path = os.path.join(script_dir, '..', 'secrets', 'secrets.json')
+    if not secrets:
+        secrets = load_secrets(secrets_file_path)
 
-mail = None
+    app.config['MAIL_SERVER'] = secrets["mail-server"]
+    app.config['MAIL_PORT'] = secrets["mail-port"]
+    app.config['MAIL_USE_TLS'] = secrets["mail-TLS"]
+    app.config['MAIL_USERNAME'] = secrets["mail-email"]
+    app.config['MAIL_PASSWORD'] = secrets["mail-password"]
+    app.config['MAIL_DEFAULT_SENDER'] = secrets["mail-email"]
 
-if app.config['MAIL_SERVER'] != "" and app.config['MAIL_USERNAME'] != "":
-    mail = Mail(app)
+    mail = None
 
-# admin = user_manager.get_user_by_email("cking999@gmail.com")
-# admin.set_password("test123")
-# user_manager.update_user(admin)
+    if app.config['MAIL_SERVER'] != "" and app.config['MAIL_USERNAME'] != "":
+        mail = Mail(app)
 
-@login_manager.user_loader
-def load_user(user_id):
-    result = user_manager.get_user_by_id(user_id)
-    return result
+    # admin = user_manager.get_user_by_email("cking999@gmail.com")
+    # admin.set_password("test123")
+    # user_manager.update_user(admin)
 
-home_page = HomePage.as_view("Home", {'config': config, 'id_config': id_config, 'logger': logger}, "index.html")
-register_page = RegisterPage.as_view("Register", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager, "mail": mail}, "register.html")
-login_page = LoginPage.as_view("Login", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "login.html")
-logout_page = LogoutPage.as_view("Logout", {'config': config, 'id_config': id_config, 'logger': logger}, "logout.html")
-forgot_password_page = ForgotPasswordPage.as_view("ForgotPassword", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "forgot_password.html")
-resend_email_confirmation_page = ResendEmailConfirmationPage.as_view("ResendConfirmationEmail", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager, "mail": mail}, "resend_confirmation_email.html") #(config, id_config, logger)
-external_login_page = ExternalLoginPage.as_view("ExternalLogin", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "external_login.html")
-confirm_email = ConfirmEmailPage.as_view("ConfirmEmail", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "confirm_email.html")
-confirmation_email_sent = ConfirmationEmailSentPage.as_view("ConfirmationEmailSent", {'config': config, 'logger': logger}, "confirmation_email_sent.html")
-# Create a dictionary mapping paths to handler methods
-routes = {
-    '/': {'handler': home_page, 'methods': ['GET']},
-    '/Index': {'handler': home_page, 'methods': ['GET']},
-    '/Account/Register': {'handler': register_page, 'methods': ['GET', 'POST']},
-    '/Account/Login': {'handler': login_page, 'methods': ['GET', 'POST']},
-    '/Account/Logout': {'handler': logout_page, 'methods': ['GET']},
-    '/Account/ForgotPassword': {'handler': forgot_password_page, 'methods': ['GET','POST']},
-    '/Account/ResendEmailConfirmation': {'handler': resend_email_confirmation_page, 'methods': ['GET','POST']},
-    '/Account/ExternalLogin': {'handler': external_login_page, 'methods': ['GET','POST']},
-    '/Account/ConfirmEmail': {'handler': confirm_email, 'methods': ['GET']},
-    '/EmailConfirmationSent': {'handler': confirmation_email_sent, 'methods': ['GET']},
-}
+    @login_manager.user_loader
+    def load_user(user_id):
+        result = user_manager.get_user_by_id(user_id)
+        return result
 
-# Register the routes with Flask
-for path, route_info in routes.items():
-    app.add_url_rule(path, view_func=route_info['handler'], endpoint=path, methods=route_info['methods'])
+    home_page = HomePage.as_view("Home", {'config': config, 'id_config': id_config, 'logger': logger}, "index.html")
+    register_page = RegisterPage.as_view("Register", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager, "mail": mail}, "register.html")
+    login_page = LoginPage.as_view("Login", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "login.html")
+    logout_page = LogoutPage.as_view("Logout", {'config': config, 'id_config': id_config, 'logger': logger}, "logout.html")
+    forgot_password_page = ForgotPasswordPage.as_view("ForgotPassword", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "forgot_password.html")
+    resend_email_confirmation_page = ResendEmailConfirmationPage.as_view("ResendConfirmationEmail", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager, "mail": mail}, "resend_confirmation_email.html") #(config, id_config, logger)
+    external_login_page = ExternalLoginPage.as_view("ExternalLogin", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "external_login.html")
+    confirm_email = ConfirmEmailPage.as_view("ConfirmEmail", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "confirm_email.html")
+    confirmation_email_sent = ConfirmationEmailSentPage.as_view("ConfirmationEmailSent", {'config': config, 'logger': logger}, "confirmation_email_sent.html")
+    # Create a dictionary mapping paths to handler methods
+    routes = {
+        '/': {'handler': home_page, 'methods': ['GET']},
+        '/Index': {'handler': home_page, 'methods': ['GET']},
+        '/Account/Register': {'handler': register_page, 'methods': ['GET', 'POST']},
+        '/Account/Login': {'handler': login_page, 'methods': ['GET', 'POST']},
+        '/Account/Logout': {'handler': logout_page, 'methods': ['GET']},
+        '/Account/ForgotPassword': {'handler': forgot_password_page, 'methods': ['GET','POST']},
+        '/Account/ResendEmailConfirmation': {'handler': resend_email_confirmation_page, 'methods': ['GET','POST']},
+        '/Account/ExternalLogin': {'handler': external_login_page, 'methods': ['GET','POST']},
+        '/Account/ConfirmEmail': {'handler': confirm_email, 'methods': ['GET']},
+        '/EmailConfirmationSent': {'handler': confirmation_email_sent, 'methods': ['GET']},
+    }
 
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory(app.static_folder, 'favicon.ico')
+    # Register the routes with Flask
+    for path, route_info in routes.items():
+        app.add_url_rule(path, view_func=route_info['handler'], endpoint=path, methods=route_info['methods'])
 
+    @app.route('/favicon.ico')
+    def favicon():
+        return send_from_directory(app.static_folder, 'favicon.ico')
+    app.run(host=config.WEB_SERVER, port=config.WEB_PORT, debug=config.DEBUG)
 if __name__ == "__main__":
-    app.run(debug=True)
+    run()

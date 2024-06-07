@@ -19,6 +19,9 @@ class Config:
             database=self.DB_NAME
         )
 
+    WEB_PORT = 5000
+    WEB_SERVER = "0.0.0.0"
+    
 class ProductionConfig(Config):
     DEBUG = False
 
