@@ -54,8 +54,7 @@ class ResendEmailConfirmationPage(View):
                 user.confirm_uuid = confirmation_token
                 self.user_manager.update_user(user)
 
-                generate_confirmation_email(self.mail, form.email.data, confirmation_token)
-                return redirect(url_for('/EmailConfirmationSent'))
+                return generate_confirmation_email(self.mail, form.email.data, confirmation_token)
             except ValidationError as e:
                 flash(str(e))
             except Exception as e:

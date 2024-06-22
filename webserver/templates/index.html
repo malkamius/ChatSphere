@@ -2,7 +2,122 @@
 
 {% block title %}Home{% endblock %}
 
+
+{% block styles %}
+    <style> 
+        .formatted {
+            white-space: pre-wrap;       /* Since CSS 2.1 */
+            white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+            white-space: -pre-wrap;      /* Opera 4-6 */
+            white-space: -o-pre-wrap;    /* Opera 7 */
+            word-wrap: break-word;       /* Internet Explorer 5.5+ */
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
-<h1>Welcome to the Home Page</h1>
-<p>This is the content of the home page.</p>
+<div class="text-center">
+    <h1 class="display-4">Welcome to Chat Sphere</h1>
+</div>
+
+<!-- Messages Display Area -->
+<div class="row">
+    <div id="messagesDisplay" class="col-md-12" style="height: 40vh; overflow-y: auto; border: 1px solid #dee2e6; overflow-wrap: break-word;">
+        <!-- Placeholder for messages -->
+        <p>Your previous chat will be listed here...</p>
+        <!-- More messages would dynamically load here -->
+    </div>
+</div>
+
+<!-- Message Submission Area -->
+<div class="row mt-3">
+    <div class="col-md-12">
+        <textarea id="messageInput" class="form-control" rows="3" placeholder="Type your message here..."></textarea>
+        <button onclick="sendMessage()" class="btn btn-primary mt-2">Send</button>
+        <button onclick="stopMessages()" class="btn btn-danger mt-2">Stop</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        var sessionid = "";
+        var message = "";
+        var messageIndex = 0;
+        function sendMessage() {
+
+            var messageId = 'message-' + new Date().getTime() + messageIndex++; // Unique ID for each message
+            $('#messagesDisplay').append('<p class="formatted" style="color: black;" id="' + messageId + '">Sending message...</p>');
+            $('#messagesDisplay').append('<p class="formatted" style="color: red;" id="response' + messageId + '"></p>'); // Prepare for response updates
+            $.ajax({
+                type: "POST",
+                url: "/send_message",
+                headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
+                contentType: "application/json",  // Set Content-Type to JSON
+                data: JSON.stringify({ sessionid: sessionid, message: $('#messageInput').val() }),
+                success: function (response) {
+                    sessionid = response.sessionid;
+                    message = "";
+                    $('#' + messageId).html(response.message); // Update the text of the newly added <p>
+                    var $messagesDisplay = $('#messagesDisplay');
+                    $messagesDisplay.scrollTop($messagesDisplay[0].scrollHeight);
+                    startCheckingMessages('response' + messageId); // Pass response messageId to continue updates on this element
+                },
+                error: function () {
+                    $('#' + messageId).text('Error sending message.');
+                }
+            });
+        }
+        var thesupertimer = undefined;
+        var stopgenerating = false;
+        function startCheckingMessages(responseMessageId) {
+            stopgenerating = false;
+            thesupertimer = setInterval(function () { checkMessages(responseMessageId, thesupertimer); }, 1000);
+        }
+
+        function checkMessages(responseMessageId, timer) {
+            clearInterval(thesupertimer);
+            //if(stopgenerating) return; 
+            $.ajax({
+                url: "check_messages?sessionid=" + sessionid + "&messagelength=" + message.length,
+                headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
+                success: function (response) {
+                    var $responseElement = $('#' + responseMessageId); // Select the last message <p> using its ID
+                    
+                    $responseElement.html($responseElement.html() + response.message); // Append new response text
+                    message = message + response.message;
+                    var $messagesDisplay = $('#messagesDisplay');
+                    $messagesDisplay.scrollTop($messagesDisplay[0].scrollHeight);
+                    if (response.message.indexOf("--end of text") == -1) {
+                        thesupertimer = setInterval(function () { checkMessages(responseMessageId, thesupertimer); }, 1000);
+                    }
+                },
+                error: function () {
+                    var $responseElement = $('#' + responseMessageId);
+                    $responseElement.html($responseElement.html() + '<br />Error checking messages.');
+                    clearInterval(thesupertimer); // Also clear interval on error to prevent further attempts
+                }
+            });
+        }
+
+        function stopMessages() {
+            stopgenerating = true; 
+            if (typeof thesupertimer !== 'undefined') {
+                //clearInterval(thesupertimer); // Stop the active interval
+            }
+            $.ajax({
+                type: "POST",
+                url: "/stop_processing?sessionid=" + sessionid,
+                headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
+                contentType: "application/json",  // Set Content-Type to JSON
+                data: JSON.stringify({ sessionid: sessionid, message: $('#messageInput').val() }),
+                success: function (response) {
+                    $('#messagesDisplay').append('<p>' + response.message + '</p>');
+                },
+                error: function () {
+                    $('#messagesDisplay').append('<p>Error stopping generation.</p>');
+                }
+            });
+        }
+    </script>
 {% endblock %}

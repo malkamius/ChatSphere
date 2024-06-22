@@ -17,12 +17,17 @@ from .ExternalLoginPage import ExternalLoginPage
 from .ConfirmEmailPage import ConfirmEmailPage
 from .ConfirmationEmailSentPage import ConfirmationEmailSentPage
 
+from .HandlerCheckMessages import HandlerCheckMessages
+from .HandlerSendMessage import HandlerSendMessage
+from .HandlerStopProcessing import HandlerStopProcessing
+
 from shared.config import DevelopmentConfig
 from shared.ansi_logger import getLogger
 from shared.identity_db_config import IdentityDevelopmentConfig
 
 from .IdentityDbContext import UserManager
 from flask_mail import Mail, Message
+from flask_wtf.csrf import CSRFProtect
 
 def run():
     id_config = IdentityDevelopmentConfig()
@@ -34,7 +39,7 @@ def run():
 
     app.secret_key = config.SESSION_SECRET_KEY
     app.config['SECURITY_PASSWORD_SALT'] = config.SESSION_SECRET_KEY
-
+    csrf = CSRFProtect(app)
     login_manager = LoginManager(app)
     login_manager.init_app(app)
     login_manager.login_view = '/Account/Login'
@@ -90,6 +95,11 @@ def run():
     external_login_page = ExternalLoginPage.as_view("ExternalLogin", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "external_login.html")
     confirm_email = ConfirmEmailPage.as_view("ConfirmEmail", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "confirm_email.html")
     confirmation_email_sent = ConfirmationEmailSentPage.as_view("ConfirmationEmailSent", {'config': config, 'logger': logger}, "confirmation_email_sent.html")
+
+    handler_check_messages = HandlerCheckMessages.as_view("check_messages", {'config': config})
+    handler_send_message = HandlerSendMessage.as_view("send_message", {'config': config})
+    handler_stop_processing = HandlerStopProcessing.as_view("stop_processing", {'config': config})
+
     # Create a dictionary mapping paths to handler methods
     routes = {
         '/': {'handler': home_page, 'methods': ['GET']},
@@ -102,6 +112,9 @@ def run():
         '/Account/ExternalLogin': {'handler': external_login_page, 'methods': ['GET','POST']},
         '/Account/ConfirmEmail': {'handler': confirm_email, 'methods': ['GET']},
         '/EmailConfirmationSent': {'handler': confirmation_email_sent, 'methods': ['GET']},
+        '/send_message': {'handler': handler_send_message, 'methods': ['POST']},
+        '/check_messages': {'handler': handler_check_messages, 'methods': ['GET']},
+        '/stop_processing': {'handler': handler_stop_processing, 'methods': ['POST']},
     }
 
     # Register the routes with Flask
