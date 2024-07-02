@@ -41,14 +41,16 @@
 
 {% block scripts %}
     <script>
+        var requests = {{ messages_json | safe }};
         var sessionid = "";
+        var requestid = "";
         var message = "";
         var messageIndex = 0;
         function sendMessage() {
 
             var messageId = 'message-' + new Date().getTime() + messageIndex++; // Unique ID for each message
             $('#messagesDisplay').append('<p class="formatted" style="color: black;" id="' + messageId + '">Sending message...</p>');
-            $('#messagesDisplay').append('<p class="formatted" style="color: red;" id="response' + messageId + '"></p>'); // Prepare for response updates
+            $('#messagesDisplay').append('<p class="formatted" style="color: red;" id="response' + messageId + '">ChatSphere: </p>'); // Prepare for response updates
             $.ajax({
                 type: "POST",
                 url: "/send_message",
@@ -56,7 +58,9 @@
                 contentType: "application/json",  // Set Content-Type to JSON
                 data: JSON.stringify({ sessionid: sessionid, message: $('#messageInput').val() }),
                 success: function (response) {
+                    //alert("Response Object: " + JSON.stringify(response));
                     sessionid = response.sessionid;
+                    requestid = response.requestid;
                     message = "";
                     $('#' + messageId).html(response.message); // Update the text of the newly added <p>
                     var $messagesDisplay = $('#messagesDisplay');
@@ -79,18 +83,27 @@
             clearInterval(thesupertimer);
             //if(stopgenerating) return; 
             $.ajax({
-                url: "check_messages?sessionid=" + sessionid + "&messagelength=" + message.length,
+                url: "check_messages?sessionid=" + sessionid + 
+                    "&requestid=" + requestid + 
+                    "&messagelength=" + message.length,
                 headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
                 success: function (response) {
                     var $responseElement = $('#' + responseMessageId); // Select the last message <p> using its ID
-                    
-                    $responseElement.html($responseElement.html() + response.message); // Append new response text
-                    message = message + response.message;
-                    var $messagesDisplay = $('#messagesDisplay');
-                    $messagesDisplay.scrollTop($messagesDisplay[0].scrollHeight);
-                    if (response.message.indexOf("--end of text") == -1) {
+                    //alert("Response Object: " + JSON.stringify(response));
+                    if(response && response.message && response.message.length > 0)
+                    {
+                        $responseElement.html($responseElement.html() + response.message); // Append new response text
+                        message = message + response.message;
+
+                        var $messagesDisplay = $('#messagesDisplay');
+                        $messagesDisplay.scrollTop($messagesDisplay[0].scrollHeight);
+                        if (response.message.indexOf("--end of text") == -1) {
+                            thesupertimer = setInterval(function () { checkMessages(responseMessageId, thesupertimer); }, 1000);
+                        }
+                    } else {
                         thesupertimer = setInterval(function () { checkMessages(responseMessageId, thesupertimer); }, 1000);
                     }
+                    
                 },
                 error: function () {
                     var $responseElement = $('#' + responseMessageId);
@@ -119,5 +132,19 @@
                 }
             });
         }
+        $(document).ready(function() {
+            var requests = {{ messages_json | safe }};
+            
+            requests.forEach(function(request) {
+                var messageId = 'message-' + request.request_id;
+                var responseMessageId = 'response' + messageId;
+                
+                $('#messagesDisplay').append('<p class="formatted" style="color: black;" id="' + messageId + '">You: ' + request.request_text + '</p>');
+                $('#messagesDisplay').append('<p class="formatted" style="color: red;" id="' + responseMessageId + '">ChatSphere: ' + (request.generated_text || '') + '</p>');
+            });
+
+            var $messagesDisplay = $('#messagesDisplay');
+            $messagesDisplay.scrollTop($messagesDisplay[0].scrollHeight);
+        });
     </script>
 {% endblock %}

@@ -18,7 +18,11 @@ class TextGenerator:
         # Fake text appending logic for demonstration
         generated_texts = []
         for messages in messages_batch:
-            generated_text = messages['lasttext'] + " [FAKE GENERATED TEXT]"
+            if (not 'lasttext' in messages) or messages['lasttext'] == None:
+                messages['lasttext'] = ""
+            else:
+                messages['lasttext'] = messages['lasttext'] + " "
+            generated_text = messages['lasttext'] + "[FAKE GENERATED TEXT]"
             if self.random.random() < .5:
                 generated_text = generated_text + "--end of text--"
             generated_texts.append(generated_text)

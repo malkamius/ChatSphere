@@ -27,24 +27,54 @@ class PhiTextGenerator (TextGenerator):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.pipe = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer)
 
+    # def generate_batch(self, messages_batch, max_new_token_count=10):
+    #     prompts = [
+    #         self.pipe.tokenizer.apply_chat_template(
+    #             messages['messages'], 
+    #             tokenize=False, 
+    #             add_generation_prompt=True) + 
+    #                 messages['lasttext'] if 'lasttext' in messages and messages['lasttext'] is not None else ''
+    #         for messages in messages_batch
+    #     ]
+    #     outputs = self.pipe(prompts, max_new_tokens=max_new_token_count, return_tensors="pt")
+    #     generated_texts = []
+    #     for output, messages in zip(outputs, messages_batch):
+    #         prompt_tokens = self.tokenizer.encode(
+    #             self.pipe.tokenizer.apply_chat_template(
+    #                 messages['messages'], 
+    #                 tokenize=False, 
+    #                 add_generation_prompt=True) + 
+    #                     messages['lasttext'] if 'lasttext' in messages and messages['lasttext'] is not None else '',
+    #             return_tensors="pt"
+    #         )
+    #         prompt_length = prompt_tokens.shape[1] - 1
+    #         output_tokens = output[0]["generated_token_ids"]
+    #         old_tokens = output_tokens[:prompt_length]
+    #         total_text = self.tokenizer.decode(output_tokens, skip_special_tokens=True)
+    #         skip_text = self.tokenizer.decode(old_tokens, skip_special_tokens=True)
+    #         start_index = len(skip_text)
+    #         generated_text = total_text[start_index:]
+    #         generated_texts.append(generated_text)
+    #     return generated_texts
     def generate_batch(self, messages_batch, max_new_token_count=10):
+        
+        for messages in messages_batch:
+            self.logger.info(messages['messages']) 
+
         prompts = [
-            self.pipe.tokenizer.apply_chat_template(messages['messages'], tokenize=False, add_generation_prompt=True) + messages['lasttext']
+            self.pipe.tokenizer.apply_chat_template(
+                messages['messages'], 
+                tokenize=False, 
+                add_generation_prompt=True
+            ) + (messages['lasttext'] if 'lasttext' in messages and messages['lasttext'] is not None else '')
             for messages in messages_batch
         ]
-        outputs = self.pipe(prompts, max_new_tokens=max_new_token_count, return_tensors="pt")
+        
+        outputs = self.pipe(prompts, max_new_tokens=max_new_token_count, return_full_text=False)
+        
         generated_texts = []
         for output, messages in zip(outputs, messages_batch):
-            prompt_tokens = self.tokenizer.encode(
-                self.pipe.tokenizer.apply_chat_template(messages['messages'], tokenize=False, add_generation_prompt=True) + messages['lasttext'],
-                return_tensors="pt"
-            )
-            prompt_length = prompt_tokens.shape[1] - 1
-            output_tokens = output["generated_token_ids"]
-            old_tokens = output_tokens[:prompt_length]
-            total_text = self.tokenizer.decode(output_tokens, skip_special_tokens=True)
-            skip_text = self.tokenizer.decode(old_tokens, skip_special_tokens=True)
-            start_index = len(skip_text)
-            generated_text = total_text[start_index:]
+            generated_text = output[0]['generated_text']
             generated_texts.append(generated_text)
+        
         return generated_texts

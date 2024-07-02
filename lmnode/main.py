@@ -11,6 +11,7 @@ import sys
 import os
 
 from TextGenerator import TextGenerator
+from TextGenerator.phi_text_generator import PhiTextGenerator
 #shared_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
 
 ## Add the parent directory to sys.path
@@ -35,8 +36,10 @@ def fetch_pending_requests(config, batch_size):
     requests = cursor.fetchall()
     request_ids = [request['id'] for request in requests]
     if request_ids:
+        placeholders = ','.join(['%s'] * len(request_ids))
         cursor.execute(
-            "UPDATE requests SET status = 'processing', locked_at = NOW() WHERE id IN (%s)" % ','.join(map(str, request_ids))
+            f"UPDATE requests SET status = 'processing', locked_at = NOW() WHERE id IN ({placeholders})",
+            request_ids
         )
         connection.commit()
     cursor.close()
@@ -48,7 +51,7 @@ def fetch_previous_messages(config, session_id):
     connection = config.get_db_connection()
     cursor = connection.cursor(dictionary=True)
     cursor.execute(
-        "SELECT request_text, generated_text FROM requests WHERE session_id = %s AND status = 'completed' ORDER BY created_at DESC",
+        "SELECT request_text, generated_text FROM requests WHERE session_id = %s AND is_complete = 1 ORDER BY created_at DESC",
         (session_id,)
     )
     messages = cursor.fetchall()
@@ -85,8 +88,23 @@ def update_response_and_request(config, request_id, generated_text, is_complete)
     status = 'completed' if is_complete else 'pending'
     locked_at = 'NULL' if status == 'completed' else 'NOW()'
     cursor.execute(
-        f"UPDATE requests SET generated_text = CONCAT(generated_text, %s), token_count = token_count + %s, is_complete = %s, status = %s, locked_at = {locked_at}, updated_at = NOW() WHERE id = %s",
-        (generated_text, len(generated_text.split()), is_complete, status, request_id)
+            """
+            UPDATE requests 
+            SET 
+                generated_text = CONCAT(COALESCE(generated_text, ''), %s), 
+                token_count = token_count + %s, 
+                is_complete = %s, 
+                status = %s, 
+                locked_at = CASE 
+                           WHEN %s = 'completed' THEN NULL 
+                           ELSE NOW() 
+                        END, 
+                updated_at = NOW() 
+            WHERE 
+                id = %s 
+                AND is_complete = false
+            """,
+        (generated_text, len(generated_text.split()), is_complete, status, status, request_id)
     )
     connection.commit()
     cursor.close()
@@ -100,7 +118,7 @@ def cleanup_stale_requests(config):
         """
         UPDATE requests
         SET status = 'pending', locked_at = NULL
-        WHERE status = 'processing' AND locked_at < NOW() - INTERVAL 15 MINUTE
+        WHERE status = 'processing' AND locked_at < NOW() - INTERVAL 2 MINUTE
         """
     )
     connection.commit()
@@ -109,7 +127,8 @@ def cleanup_stale_requests(config):
 
 def process_requests(config, logger):
     logger.info("\033[1;32mInitializing LLM Pipeline, this could take some time.\033[0m");
-    text_generator = TextGenerator(config)
+    # text_generator = TextGenerator(config)
+    text_generator = PhiTextGenerator(config)
     batch_size = 10
     last_cleanup_time = time.time()
     cleanup_interval = 300  # 5 minutes in seconds
@@ -140,7 +159,8 @@ def process_requests(config, logger):
             
             previous_messages = fetch_previous_messages(config, session_id)
             previous_messages.insert(0, user_message)
-            
+            previous_messages.reverse()
+
             messages_batch.append({
                 'request_id': request_id,
                 'session_id': session_id,
@@ -152,7 +172,7 @@ def process_requests(config, logger):
         for i, request in enumerate(requests):
             generated_text = generated_texts[i]
             request_id = request['id']
-            is_complete = generated_text == "" or str.endswith(generated_text, "--end of text--")  # Implement your logic to determine if the response is complete
+            is_complete = generated_text == None or generated_text == "" or str.endswith(generated_text, "--end of text--")  # Implement your logic to determine if the response is complete
             update_response_and_request(config, request_id, generated_text, is_complete)
         logger.info(f"Done generating (max of {max_new_tokens_per_request} per request) new tokens for {num_requests} requests.");
 
