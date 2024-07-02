@@ -13,12 +13,13 @@ class DataDbContext:
         cursor = connection.cursor(dictionary=True)
         session_id = None
         try:
-            # Insert the new session and retrieve the generated UUID
-            cursor.execute("INSERT INTO sessions (id, user_id) VALUES(UUID(), %s)", (userid,))
-            cursor.execute("SELECT LAST_INSERT_ID() AS session_id")  # Retrieve the last inserted ID
+            cursor.execute("SELECT UUID() AS new_id")
             result = cursor.fetchone()
             if result:
-                session_id = result['session_id']
+                new_uuid = result['new_id']
+                cursor.execute("INSERT INTO sessions (id, user_id) VALUES(%s, %s)", (new_uuid, userid,))
+            
+                session_id = new_uuid
             connection.commit()
         except Exception as e:
             self.logger.error(f"Failed to create session for user {userid}: {e}")
@@ -92,6 +93,70 @@ class DataDbContext:
             cursor.close()
             connection.close()
     
+    def retrieve_sessions(self, userid: str):
+        connection = self.config.get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        try:
+            
+            cursor.execute("""
+                            SELECT
+                                id, 
+                                COALESCE(name, id) AS name
+                            FROM 
+                                sessions
+                            WHERE
+                                user_id= %s 
+                            AND deleted_at IS NULL
+                            ORDER BY created_at DESC
+                            """,  (userid, ))
+            
+            results = cursor.fetchall()
+            requests = []
+            for row in results:
+                request = {
+                            'session_id': row['id'], 
+                            'session_name': row['name'],
+                        }
+                requests.append(request)
+                #requests.insert(0, request)
+            return requests                
+        except Exception as e:
+            self.logger.error(f"Failed to fetch sessions for user {userid}: {e}")
+            raise e
+        finally:
+            cursor.close()
+            connection.close()
+        
+    def retrieve_session_name(self, userid: str, sessionid: str):
+        connection = self.config.get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        try:
+            
+            cursor.execute("""
+                            SELECT
+                                id, 
+                                name
+                            FROM 
+                                sessions
+                            WHERE
+                                user_id= %s
+                            AND id = %s
+                            AND deleted_at IS NULL
+                            ORDER BY created_at DESC
+                            """,  (userid, sessionid, ))
+            
+            result = cursor.fetchone()
+            if result:
+                return result["name"] if result["name"] else result["id"]
+            else:
+                return None
+        except Exception as e:
+            self.logger.error(f"Failed to fetch sessions for user {userid}: {e}")
+            raise e
+        finally:
+            cursor.close()
+            connection.close()
+
     def retrieve_session_requests(self, userid: str, sessionid: str, beforerequestid: str = None, count: int = 10):
         connection = self.config.get_db_connection()
         cursor = connection.cursor(dictionary=True)

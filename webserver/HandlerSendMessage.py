@@ -17,25 +17,34 @@ class HandlerSendMessage(MethodView):
         data = request.get_json()  # Parse JSON data
         if current_user.is_authenticated:
             user_id = current_user.id
-        else:
-            user_id = "0000"
-        
-        if data and 'message' in data:
-            
-            message = data['message']
-            
-            try:
+            if data and 'message' in data:
                 db_context = DataDbContext(self.config)
-            
-                requestid = db_context.create_new_request(user_id, "0000", message)
+                message = data['message']
+                if 'sessionid' in data and data['sessionid'] and data['sessionid'] != "None":
+                    sessionid = data['sessionid']
+                    self.logger.info(f"EXISTING SESSION: {sessionid}")
+                else:
+                    self.logger.info("CREATING SESSION")
+                    sessionid = db_context.create_new_session(user_id)
 
-                response = {
-                    "sessionid": 
-                    "0000", 
-                    "requestid": requestid, 
-                    "message": f"You: {message}"}
-            except Exception as e:
-                response = {"sessionid": "0000", "message": f"Error creating request: {str(e)}"} 
+                sessionname = db_context.retrieve_session_name(user_id, sessionid)
+
+                if sessionname is None:
+                    response = {"sessionid": "", "message": f"Error creating request: You do not have access to that session"} 
+                else:
+                    try:                    
+                        requestid = db_context.create_new_request(user_id, sessionid, message)
+
+                        response = {
+                            "sessionid": sessionid,
+                            "sessionname": sessionname,
+                            "requestid": requestid, 
+                            "message": f"You: {message}"}
+                    except Exception as e:
+                        response = {"sessionid": "", "message": f"Error creating request: {str(e)}"} 
+            else:
+                response = {"sessionid": "", "message": f"Error creating request: Invalid input"} 
         else:
-            response = {"sessionid": "0000", "message": f"Error creating request: Invalid input"} 
+            response = {"sessionid": "", "message": f"Must be authenticated to send messages"} 
+        
         return jsonify(response)

@@ -16,39 +16,64 @@
 {% endblock %}
 
 {% block content %}
-<div class="text-center">
-    <h1 class="display-4">Welcome to Chat Sphere</h1>
-</div>
-{% if current_user.is_authenticated %}
-<!-- Messages Display Area -->
-<div class="row">
-    <div id="messagesDisplay" class="col-md-12" style="height: 40vh; overflow-y: auto; border: 1px solid #dee2e6; overflow-wrap: break-word;">
-        <!-- Placeholder for messages -->
-        <p>Your previous chat will be listed here...</p>
-        <!-- More messages would dynamically load here -->
+<div class="container">
+    <div class="text-center">
+        <h1 class="display-4">Welcome to Chat Sphere</h1>
     </div>
-</div>
+    {% if current_user.is_authenticated %}
+    <div class="row">
+        <!-- Sidebar for sessions -->
+        <div class="col-md-3" style="max-height: 80vh; overflow-y: scroll; overflow-x: scroll;">
+            <div class="card mb-3">
+                <div class="card-header">
+                    Sessions
+                </div>
+                <div class="card-body">
+                    <a href="/Index" class="btn btn-secondary btn-block mb-2">New Session</a>
+                </div>
+                <ul class="list-group list-group-flush" id="sessionsList">
+                    <!-- JavaScript will populate past sessions here -->
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Messages Display Area -->
+        <div class="col-md-9">
+            <div id="messagesDisplay" class="col-md-12" style="height: 60vh; overflow-y: auto; border: 1px solid #dee2e6; overflow-wrap: break-word;">
+                <!-- Placeholder for messages -->
+                {% if sessionid is none %}
+                    <p>New Session</p>
+                {% else %}
+                    <p>Your previous chat will be listed here...</p>
+                {% endif %}
+                <!-- More messages would dynamically load here -->
+            </div>
 
-<!-- Message Submission Area -->
-<div class="row mt-3">
-    <div class="col-md-12">
-        <textarea id="messageInput" class="form-control" rows="3" placeholder="Type your message here..."></textarea>
-        <button onclick="sendMessage()" class="btn btn-primary mt-2">Send</button>
-        <button onclick="stopMessages()" class="btn btn-danger mt-2">Stop</button>
+            <!-- Message Submission Area -->
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <textarea id="messageInput" class="form-control" rows="3" placeholder="Type your message here..."></textarea>
+                    <button onclick="sendMessage()" class="btn btn-primary mt-2">Send</button>
+                    <button onclick="stopMessages()" class="btn btn-danger mt-2">Stop</button>
+                </div>
+            </div>
+        </div>
     </div>
+    {% else %}
+    <div class="text-center">
+        <h1 class="display-4">You must be logged in to chat with ChatSphere</h1>
+    </div>
+    {% endif %}
 </div>
-{% else %}
-<div class="text-center">
-    <h1 class="display-4">You must be logged in to chat with ChatSphere</h1>
-</div>
-{% endif %}
 {% endblock %}
 
 {% block scripts %}
 {% if current_user.is_authenticated %}
     <script>
         var requests = {{ messages_json | safe }};
-        var sessionid = "";
+        var pastSessions = {{ sessions_json | safe }};
+        
+        var sessionid = "{{ sessionid }}";
         var requestid = "";
         var message = "";
         var messageIndex = 0;
@@ -66,6 +91,30 @@
                 success: function (response) {
                     //alert("Response Object: " + JSON.stringify(response));
                     sessionid = response.sessionid;
+                    if(response.sessionid && response.sessionname) {
+                        if (response.sessionid && response.sessionname) {
+                        var sessionFound = false;
+
+                        // Search for session with this id and update its name if found
+                        pastSessions.forEach(function(session) {
+                            if (session.session_id === response.sessionid) {
+                                session.session_name = response.sessionname;
+                                sessionFound = true;
+                            }
+                        });
+
+                        // If session not found, insert it at the top of the list
+                        if (!sessionFound) {
+                            pastSessions.unshift({
+                                session_id: response.sessionid,
+                                session_name: response.sessionname
+                            });
+                        }
+
+                        // Re-populate the session list
+                        loadSessions();
+                    }
+                    }
                     requestid = response.requestid;
                     message = "";
                     $('#' + messageId).html(response.message); // Update the text of the newly added <p>
@@ -138,19 +187,51 @@
                 }
             });
         }
-        $(document).ready(function() {
+        
+        function loadRequests() {
             var requests = {{ messages_json | safe }};
-            
+            var incompletemessageid = "";
             requests.forEach(function(request) {
                 var messageId = 'message-' + request.request_id;
                 var responseMessageId = 'response' + messageId;
                 
                 $('#messagesDisplay').append('<p class="formatted" style="color: black;" id="' + messageId + '">You: ' + request.request_text + '</p>');
                 $('#messagesDisplay').append('<p class="formatted" style="color: red;" id="' + responseMessageId + '">ChatSphere: ' + (request.generated_text || '') + '</p>');
+
+                if(request.is_complete == false) {
+                    incompletemessageid = messageId;
+                }
             });
 
             var $messagesDisplay = $('#messagesDisplay');
             $messagesDisplay.scrollTop($messagesDisplay[0].scrollHeight);
+
+            if(incompletemessageid.length > 0) {
+                startCheckingMessages('response' + incompletemessageid);
+            }
+        }
+
+
+        function loadSessions() {
+            
+            // Function to populate past sessions
+            function populatePastSessions(sessions) {
+                var $sessionsList = $('#sessionsList');
+                $sessionsList.empty();  // Clear existing sessions
+                sessions.forEach(function(session) {
+                    var sessionLink = '<a href="/Index?sessionid=' + session.session_id + '" class="btn btn-secondary btn-block mb-2">' + session.session_name + '</a>';
+                    $sessionsList.append('<li class="list-group-item">' + sessionLink + '</li>');
+                });
+            }
+
+            
+
+            populatePastSessions(pastSessions);
+        }
+
+        $(document).ready(function() {
+            loadSessions();
+            loadRequests();
         });
     </script>
 {% endif %}

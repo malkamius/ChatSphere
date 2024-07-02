@@ -14,19 +14,25 @@ class HomePage(View):
     def dispatch_request(self):
         if current_user.is_authenticated:
             user_id = current_user.id
-        else:
-            user_id = "0000"
-        
-        sessionid = request.args.get("sessionid", default="0000")
-        requestid = request.args.get("requestid")
-        messagelength = request.args.get("messagelength")
-
-        if sessionid != None:
+            sessionid = request.args.get("sessionid")
+            requestid = request.args.get("requestid")
+            messagelength = request.args.get("messagelength")
+            
             db_context = DataDbContext(self.config)
-            messages = db_context.retrieve_session_requests(user_id, sessionid, count = 100)
-        else:
-            messages = []
 
-        messages_json = json.dumps(messages)
-        
-        return render_template(self.template, messages_json=messages_json)
+            sessions = db_context.retrieve_sessions(user_id)
+
+            if sessionid != None:
+                
+                messages = db_context.retrieve_session_requests(user_id, sessionid, count = 100)
+            else:
+                messages = []
+
+            messages_json = json.dumps(messages)
+            sessions_json = json.dumps(sessions)
+            return render_template(self.template, 
+                                   messages_json=messages_json, 
+                                   sessions_json = sessions_json,
+                                   sessionid = sessionid)
+        else:
+            return render_template(self.template)    
