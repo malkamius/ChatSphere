@@ -1,5 +1,4 @@
-import torch
-from transformers import AutoModelForCausalLM, AutoConfig, AutoTokenizer, pipeline
+
 import threading
 import mysql.connector
 import time
@@ -11,6 +10,7 @@ import socket
 import sys
 import os
 
+from TextGenerator import TextGenerator
 #shared_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'shared'))
 
 ## Add the parent directory to sys.path
@@ -23,52 +23,7 @@ from shared.ansi_logger import getLogger
 # logging.basicConfig(level=loglevel, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-class TextGenerator:
-    def __init__(self, logger):
-        self.logger = logger
-        self.initialize_model()
-        
-    def initialize_model(self):
-        model_name = "leliuga/Phi-3-mini-128k-instruct-bnb-4bit"
-        model_config = AutoConfig.from_pretrained(
-            model_name,
-            device_map="cuda",
-            torch_dtype=torch.float16,
-            trust_remote_code=True,
-            attn_implementation="eager"
-        )
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            device_map="cuda",
-            torch_dtype="auto",
-            trust_remote_code=True,
-            attn_implementation="eager",
-            config=model_config
-        )
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.pipe = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer)
 
-    def generate_batch(self, messages_batch, max_new_token_count=10):
-        prompts = [
-            self.pipe.tokenizer.apply_chat_template(messages['messages'], tokenize=False, add_generation_prompt=True) + messages['lasttext']
-            for messages in messages_batch
-        ]
-        outputs = self.pipe(prompts, max_new_tokens=max_new_token_count, return_tensors="pt")
-        generated_texts = []
-        for output, messages in zip(outputs, messages_batch):
-            prompt_tokens = self.tokenizer.encode(
-                self.pipe.tokenizer.apply_chat_template(messages['messages'], tokenize=False, add_generation_prompt=True) + messages['lasttext'],
-                return_tensors="pt"
-            )
-            prompt_length = prompt_tokens.shape[1] - 1
-            output_tokens = output["generated_token_ids"]
-            old_tokens = output_tokens[:prompt_length]
-            total_text = self.tokenizer.decode(output_tokens, skip_special_tokens=True)
-            skip_text = self.tokenizer.decode(old_tokens, skip_special_tokens=True)
-            start_index = len(skip_text)
-            generated_text = total_text[start_index:]
-            generated_texts.append(generated_text)
-        return generated_texts
 
 def fetch_pending_requests(config, batch_size):
     connection = config.get_db_connection()
@@ -154,7 +109,7 @@ def cleanup_stale_requests(config):
 
 def process_requests(config, logger):
     logger.info("\033[1;32mInitializing LLM Pipeline, this could take some time.\033[0m");
-    text_generator = TextGenerator(logger)
+    text_generator = TextGenerator(config)
     batch_size = 10
     last_cleanup_time = time.time()
     cleanup_interval = 300  # 5 minutes in seconds
@@ -197,7 +152,7 @@ def process_requests(config, logger):
         for i, request in enumerate(requests):
             generated_text = generated_texts[i]
             request_id = request['id']
-            is_complete = False  # Implement your logic to determine if the response is complete
+            is_complete = generated_text == "" or str.endswith(generated_text, "--end of text--")  # Implement your logic to determine if the response is complete
             update_response_and_request(config, request_id, generated_text, is_complete)
         logger.info(f"Done generating (max of {max_new_tokens_per_request} per request) new tokens for {num_requests} requests.");
 

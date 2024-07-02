@@ -2,14 +2,14 @@ from flask import render_template, redirect, url_for, abort, request, flash
 from flask.views import View
 import uuid
 from flask_mail import Mail, Message
-
+from shared.ansi_logger import getLogger
 
 
 class ConfirmEmailPage(View):
     methods = ["GET"]
     def __init__(self, model, template):
         self.config = model["config"]
-        self.logger = model["logger"]
+        self.logger = getLogger(self.config, __name__)
         self.user_manager = model["user_manager"]
         self.template = template
         

@@ -7,6 +7,7 @@ import uuid
 from flask_mail import Mail, Message
 from .ConfirmationEmailGenerator import generate_confirmation_email
 from .IdentityDbContext import UserManager
+from shared.ansi_logger import getLogger
 
 class RegisterForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
@@ -29,7 +30,7 @@ class RegisterPage(View):
     methods = ["GET", "POST"]
     def __init__(self, model, template):
         self.config = model["config"]
-        self.logger = model["logger"]
+        self.logger =  getLogger(self.config, __name__)
         self.user_manager = model["user_manager"]
         self.mail = model["mail"]
         self.template = template

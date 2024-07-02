@@ -8,6 +8,7 @@
     <div class="col-md-4">
         <section>
             <form id="account" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <h2>Use a local account to log in.</h2>
                 <hr />
                 <div class="text-danger" role="alert">{{ error_text }}</div>
@@ -49,6 +50,7 @@
             <h3>Use another service to log in.</h3>
             <hr />
 			<form id="external-account" action="{{ url_for('/Account/ExternalLogin', returnUrl=request.args.get('returnUrl', '/')) }}" method="post" class="form-horizontal">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 				<div>
 					<p>
 						<button type="submit" class="btn btn-primary" name="provider" value="Google" title="Log in using your Google account">Google</button>

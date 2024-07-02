@@ -4,12 +4,13 @@ import logging
 from flask_bcrypt import Bcrypt
 from typing import Optional
 import uuid
+from shared.ansi_logger import getLogger
 
 id_config = IdentityDevelopmentConfig()
 
 class UserManager:
-    def __init__(self, logger: logging.Logger, bcrypt: Bcrypt):
-        self.logger = logger
+    def __init__(self, config, bcrypt: Bcrypt):
+        self.logger = getLogger(config, __name__)
         self.bcrypt = bcrypt
     def create_user(self, email: str, password: str, confirmation_token: str):
         

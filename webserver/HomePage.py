@@ -1,11 +1,12 @@
 from flask import render_template, session
 from flask_login import LoginManager, login_user, UserMixin, current_user
 from flask.views import View
+from shared.ansi_logger import getLogger
 
 class HomePage(View):
     def __init__(self, model, template): #config, id_config, logger):
         self.config = model["config"]
-        self.logger = model["logger"]
+        self.logger = getLogger(self.config, __name__)
         self.template = template
         
     def dispatch_request(self):

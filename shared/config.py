@@ -1,4 +1,5 @@
 import mysql.connector
+from shared import load_secrets
 
 class Config:
     SESSION_SECRET_KEY = 'feda5b49-1f4c-357f-a94f-e5afafdad43e'
@@ -18,9 +19,11 @@ class Config:
             password=self.DB_PASSWORD,
             database=self.DB_NAME
         )
-
-    WEB_PORT = 5000
-    WEB_SERVER = "0.0.0.0"
+    
+    def __init__(self):  
+        secrets = load_secrets()
+        self.WEB_PORT = secrets["web-port"]
+        self.WEB_SERVER = secrets["web-server"]
     
 class ProductionConfig(Config):
     DEBUG = False

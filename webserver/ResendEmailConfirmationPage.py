@@ -1,17 +1,4 @@
-from flask import render_template, flash
-from flask.views import View
-
-class ResendEmailConfirmationPage(View):
-    methods = ["GET", "POST"]
-    def __init__(self, model, template):
-        self.config = model["config"]
-        self.logger = model["logger"]
-        self.template = template
-        
-    def dispatch_request(self):
-        return render_template(self.template)
-    
-from flask import render_template, redirect, url_for, abort
+from flask import render_template, redirect, url_for, abort, flash
 from flask.views import View
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
@@ -20,6 +7,7 @@ import uuid
 from flask_mail import Mail, Message
 from .ConfirmationEmailGenerator import generate_confirmation_email
 from .IdentityDbContext import UserManager
+from shared.ansi_logger import getLogger
 
 class EmailForm(FlaskForm):
     email = StringField('Email', validators=[DataRequired(), Email()])
@@ -40,7 +28,7 @@ class ResendEmailConfirmationPage(View):
     methods = ["GET", "POST"]
     def __init__(self, model, template):
         self.config = model["config"]
-        self.logger = model["logger"]
+        self.logger = getLogger(self.config, __name__)
         self.user_manager = model["user_manager"]
         self.mail = model["mail"]
         self.template = template

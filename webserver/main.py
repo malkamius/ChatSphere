@@ -45,7 +45,7 @@ def run():
     login_manager.login_view = '/Account/Login'
     bcrypt = Bcrypt(app)
 
-    user_manager = UserManager(logger, bcrypt)
+    user_manager = UserManager(config, bcrypt)
 
 
     # Get the current directory of the script
@@ -124,6 +124,8 @@ def run():
     @app.route('/favicon.ico')
     def favicon():
         return send_from_directory(app.static_folder, 'favicon.ico')
+    
     app.run(host=config.WEB_SERVER, port=config.WEB_PORT, debug=config.DEBUG)
+    
 if __name__ == "__main__":
     run()
