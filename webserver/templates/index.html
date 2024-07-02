@@ -19,7 +19,7 @@
 <div class="text-center">
     <h1 class="display-4">Welcome to Chat Sphere</h1>
 </div>
-
+{% if current_user.is_authenticated %}
 <!-- Messages Display Area -->
 <div class="row">
     <div id="messagesDisplay" class="col-md-12" style="height: 40vh; overflow-y: auto; border: 1px solid #dee2e6; overflow-wrap: break-word;">
@@ -37,9 +37,15 @@
         <button onclick="stopMessages()" class="btn btn-danger mt-2">Stop</button>
     </div>
 </div>
+{% else %}
+<div class="text-center">
+    <h1 class="display-4">You must be logged in to chat with ChatSphere</h1>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
+{% if current_user.is_authenticated %}
     <script>
         var requests = {{ messages_json | safe }};
         var sessionid = "";
@@ -147,4 +153,5 @@
             $messagesDisplay.scrollTop($messagesDisplay[0].scrollHeight);
         });
     </script>
+{% endif %}
 {% endblock %}

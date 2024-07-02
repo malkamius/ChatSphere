@@ -47,37 +47,37 @@ def fetch_pending_requests(config, batch_size):
     return requests
 
 def fetch_previous_messages(config, session_id):
-    
     connection = config.get_db_connection()
     cursor = connection.cursor(dictionary=True)
+
+    # Use a server-side cursor to fetch rows one at a time
     cursor.execute(
         "SELECT request_text, generated_text FROM requests WHERE session_id = %s AND is_complete = 1 ORDER BY created_at DESC",
         (session_id,)
     )
-    messages = cursor.fetchall()
-    cursor.close()
-    connection.close()
-
+    
     combined_messages = []
     total_length = 0
 
-    for msg in messages:
-        user_message = {'role': 'user', 'content': msg['request_text']}
-        assistant_message = {'role': 'assistant', 'content': msg['generated_text']}
-        
+    for msg in cursor:
         # Add the user message
-        total_length += len(user_message['content'])
-        if total_length <= 10000:
+        total_length += len(msg['request_text'])
+        if total_length <= 4000:
+            user_message = {'role': 'user', 'content': msg['request_text']}
             combined_messages.insert(0, user_message)
         else:
             break
         
         # Add the assistant message
-        total_length += len(assistant_message['content'])
-        if total_length <= 10000:
+        total_length += len(msg['generated_text'])
+        if total_length <= 4000:
+            assistant_message = {'role': 'assistant', 'content': msg['generated_text']}
             combined_messages.insert(0, assistant_message)
         else:
             break
+
+    cursor.close()
+    connection.close()
 
     return combined_messages
 
@@ -160,6 +160,9 @@ def process_requests(config, logger):
             
             previous_messages = fetch_previous_messages(config, session_id)
             previous_messages.insert(0, user_message)
+            
+            # messages should be handed to the LLM oldest first with the most recent
+            # request at the end
             previous_messages.reverse()
 
             messages_batch.append({
