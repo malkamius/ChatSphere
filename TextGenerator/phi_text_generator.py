@@ -58,8 +58,8 @@ class PhiTextGenerator (TextGenerator):
     #     return generated_texts
     def generate_batch(self, messages_batch, max_new_token_count=10):
         
-        for messages in messages_batch:
-            self.logger.info(messages['messages']) 
+        #for messages in messages_batch:
+        #    self.logger.info(str(messages['messages']) + (messages['lasttext'] if 'lasttext' in messages and messages['lasttext'] is not None else '')) 
 
         prompts = [
             self.pipe.tokenizer.apply_chat_template(

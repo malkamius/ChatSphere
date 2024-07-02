@@ -131,9 +131,10 @@ def process_requests(config, logger):
     text_generator = PhiTextGenerator(config)
     batch_size = 10
     last_cleanup_time = time.time()
-    cleanup_interval = 300  # 5 minutes in seconds
+    cleanup_interval = 15 
     max_new_tokens_per_request = 10
     logger.info("\033[1;32mLLM Initialized, checking for requests.\033[0m");
+    cleanup_stale_requests(config)
     while True:
         current_time = time.time()
         if current_time - last_cleanup_time > cleanup_interval:
