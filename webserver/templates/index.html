@@ -105,6 +105,7 @@
 
                         // If session not found, insert it at the top of the list
                         if (!sessionFound) {
+                            updateURLWithSessionId(sessionid);
                             pastSessions.unshift({
                                 session_id: response.sessionid,
                                 session_name: response.sessionname
@@ -188,26 +189,36 @@
             });
         }
         
+        function updateURLWithSessionId(sessionid) {
+            if (history.pushState) {
+                var newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?sessionid=' + sessionid;
+                window.history.pushState({ path: newUrl }, '', newUrl);
+            } else {
+                // Fallback for browsers that do not support history.pushState
+                window.location.search = 'sessionid=' + sessionid;
+            }
+        }
         function loadRequests() {
             var requests = {{ messages_json | safe }};
-            var incompletemessageid = "";
+            //alert("Requests Object: " + JSON.stringify(requests));
+            var incompleteresponseid = "";
             requests.forEach(function(request) {
                 var messageId = 'message-' + request.request_id;
                 var responseMessageId = 'response' + messageId;
-                
                 $('#messagesDisplay').append('<p class="formatted" style="color: black;" id="' + messageId + '">You: ' + request.request_text + '</p>');
                 $('#messagesDisplay').append('<p class="formatted" style="color: red;" id="' + responseMessageId + '">ChatSphere: ' + (request.generated_text || '') + '</p>');
 
-                if(request.is_complete == false) {
-                    incompletemessageid = messageId;
+                if(request.is_complete == false || request.is_complete == 0) {
+                    requestid = request.request_id;
+                    incompleteresponseid = responseMessageId;
                 }
             });
 
             var $messagesDisplay = $('#messagesDisplay');
             $messagesDisplay.scrollTop($messagesDisplay[0].scrollHeight);
 
-            if(incompletemessageid.length > 0) {
-                startCheckingMessages('response' + incompletemessageid);
+            if(incompleteresponseid.length > 0) {
+                startCheckingMessages(incompleteresponseid);
             }
         }
 
