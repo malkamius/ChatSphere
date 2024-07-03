@@ -1,3 +1,9 @@
+-- Create the database
+CREATE DATABASE `chat_sphere_data` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
+
+-- Use the database
+USE `chat_sphere_data`;
+
 CREATE TABLE `folders` (
   `id` varchar(255) NOT NULL,
   `user_id` varchar(255) NOT NULL,
