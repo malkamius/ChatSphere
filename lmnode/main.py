@@ -61,7 +61,9 @@ def fetch_previous_messages(config, session_id):
 
     for msg in cursor:
         # Add the user message
-        total_length += len(msg['request_text'])
+        if msg['request_text'] is None:
+            msg['request_text'] = ''
+        total_length += len(msg['request_text'] if msg['request_text'] is not None else '')
         if total_length <= 4000:
             user_message = {'role': 'user', 'content': msg['request_text']}
             combined_messages.insert(0, user_message)
@@ -69,6 +71,8 @@ def fetch_previous_messages(config, session_id):
             break
         
         # Add the assistant message
+        if msg['generated_text'] is None:
+            msg['generated_text'] = ''
         total_length += len(msg['generated_text'])
         if total_length <= 4000:
             assistant_message = {'role': 'assistant', 'content': msg['generated_text']}
