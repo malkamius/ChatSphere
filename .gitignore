@@ -399,3 +399,4 @@ FodyWeavers.xsd
 
 live-secrets/
 process.lock
+.env

@@ -11,14 +11,8 @@ Create a virtual environment (optional but recommended): <br />
 This keeps your installations and project separate from your main Python installation. <br />
 <br />
 <br />
-On a command line go to where you want to create the python environment <br />
-python -m venv myenv <br />
-From the same command line run  <br />
-myenv\Scripts\activate.bat <br />
+install.bat should handle setting up an environment under windows<br />
 <br />
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 <br />
-pip install transformers accelerate bitsandbytes <br />
-pip install Flask <br />
-
-navigate to the chatsphere-py folder on the command line <br />
-python background.py <br />
+<br />
+run_lmnode.bat should run the backend process that responds to requests<br />
+run_webserver.bat should run the webserver that acts as an interface<br />

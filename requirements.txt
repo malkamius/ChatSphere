@@ -1,0 +1,10 @@
+accelerate
+bitsandbytes
+mysql-connector-python
+filelock
+Flask
+Flask-Mail
+Flask-Bcrypt 
+Flask-Login
+flask_wtf
+email_validator
