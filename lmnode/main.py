@@ -47,43 +47,50 @@ def fetch_pending_requests(config, batch_size):
     return requests
 
 def fetch_previous_messages(config, session_id):
-    connection = config.get_db_connection()
-    cursor = connection.cursor(dictionary=True)
-
-    # Use a server-side cursor to fetch rows one at a time
-    cursor.execute(
-        "SELECT request_text, generated_text FROM requests WHERE session_id = %s AND is_complete = 1 ORDER BY created_at DESC",
-        (session_id,)
-    )
-    
     combined_messages = []
-    total_length = 0
+    try:
+        connection = config.get_db_connection()
+        cursor = connection.cursor(dictionary=True)
 
-    for msg in cursor:
-        # Add the user message
-        if msg['request_text'] is None:
-            msg['request_text'] = ''
-        total_length += len(msg['request_text'] if msg['request_text'] is not None else '')
-        if total_length <= 4000:
-            user_message = {'role': 'user', 'content': msg['request_text']}
-            combined_messages.insert(0, user_message)
-        else:
-            break
+        # Use a server-side cursor to fetch rows one at a time
+        cursor.execute(
+            "SELECT request_text, generated_text FROM requests WHERE session_id = %s AND is_complete = 1 ORDER BY created_at DESC",
+            (session_id,)
+        )
         
-        # Add the assistant message
-        if msg['generated_text'] is None:
-            msg['generated_text'] = ''
-        total_length += len(msg['generated_text'])
-        if total_length <= 4000:
-            assistant_message = {'role': 'assistant', 'content': msg['generated_text']}
-            combined_messages.insert(0, assistant_message)
-        else:
-            break
+        
+        total_length = 0
+        max_length = 4000
 
-    cursor.close()
-    connection.close()
+        for msg in cursor:
+            # Add the user message
+            request_text = msg['request_text'] or ''
+            total_length += len(request_text)
+            if total_length <= max_length:
+                user_message = {'role': 'user', 'content': request_text}
+                combined_messages.insert(0, user_message)
+            else:
+                break
+            
+            # Add the assistant message
+            generated_text = msg['generated_text'] or ''
+            total_length += len(generated_text)
+            if total_length <= max_length:
+                assistant_message = {'role': 'assistant', 'content': generated_text}
+                combined_messages.insert(0, assistant_message)
+            else:
+                break
+        connection.rollback()
+        cursor.close()
+        connection.close()
 
-    return combined_messages
+        return combined_messages
+
+    except Exception as e:
+        if connection:
+            connection.close()
+        print(f"An error occurred: {e}")
+        return combined_messages
 
 def update_response_and_request(config, request_id, generated_text, is_complete):
 
