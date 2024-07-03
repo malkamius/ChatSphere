@@ -67,7 +67,8 @@ def run():
 
     app.config['MAIL_SERVER'] = secrets["mail-server"]
     app.config['MAIL_PORT'] = secrets["mail-port"]
-    app.config['MAIL_USE_TLS'] = secrets["mail-TLS"]
+    app.config['MAIL_USE_TLS'] = secrets["mail-TLS"] if not secrets["mail-SSL"] else False
+    app.config['MAIL_USE_SSL'] = secrets["mail-SSL"]
     app.config['MAIL_USERNAME'] = secrets["mail-email"]
     app.config['MAIL_PASSWORD'] = secrets["mail-password"]
     app.config['MAIL_DEFAULT_SENDER'] = secrets["mail-email"]
