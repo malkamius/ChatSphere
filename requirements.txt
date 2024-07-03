@@ -8,3 +8,5 @@ Flask-Bcrypt
 Flask-Login
 flask_wtf
 email_validator
+oauthlib
+requests-oauthlib
