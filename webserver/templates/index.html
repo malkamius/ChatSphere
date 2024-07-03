@@ -78,7 +78,6 @@
         var message = "";
         var messageIndex = 0;
         function sendMessage() {
-
             var messageId = 'message-' + new Date().getTime() + messageIndex++; // Unique ID for each message
             $('#messagesDisplay').append('<p class="formatted" style="color: black;" id="' + messageId + '">Sending message...</p>');
             $('#messagesDisplay').append('<p class="formatted" style="color: red;" id="response' + messageId + '">ChatSphere: </p>'); // Prepare for response updates
@@ -89,10 +88,8 @@
                 contentType: "application/json",  // Set Content-Type to JSON
                 data: JSON.stringify({ sessionid: sessionid, message: $('#messageInput').val() }),
                 success: function (response) {
-                    //alert("Response Object: " + JSON.stringify(response));
                     sessionid = response.sessionid;
-                    if(response.sessionid && response.sessionname) {
-                        if (response.sessionid && response.sessionname) {
+                    if (response.sessionid && response.sessionname) {
                         var sessionFound = false;
 
                         // Search for session with this id and update its name if found
@@ -115,10 +112,10 @@
                         // Re-populate the session list
                         loadSessions();
                     }
-                    }
                     requestid = response.requestid;
                     message = "";
                     $('#' + messageId).html(response.message); // Update the text of the newly added <p>
+                    $('#messageInput').val(''); // Clear the input box after sending the message
                     var $messagesDisplay = $('#messagesDisplay');
                     $messagesDisplay.scrollTop($messagesDisplay[0].scrollHeight);
                     startCheckingMessages('response' + messageId); // Pass response messageId to continue updates on this element
@@ -243,6 +240,13 @@
         $(document).ready(function() {
             loadSessions();
             loadRequests();
+
+            $('#messageInput').keydown(function(event) {
+                if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    sendMessage();
+                }
+            });
         });
     </script>
 {% endif %}
