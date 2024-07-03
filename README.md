@@ -20,3 +20,4 @@ run_webserver.bat should run the webserver that acts as an interface<br />
 # Database
 There are two .sql files with scripts to setup the databases in a mysql server.<br />
 shared\config.py needs to be updated with the MySQL information<br />
+shared\identity_db_config.py needs to be updated with the MySQL information<br />
