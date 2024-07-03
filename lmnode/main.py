@@ -129,7 +129,7 @@ def cleanup_stale_requests(config):
         """
         UPDATE requests
         SET status = 'pending', locked_at = NULL
-        WHERE status = 'processing' AND locked_at < NOW() - INTERVAL 2 MINUTE
+        WHERE status = 'processing' AND locked_at < NOW() - INTERVAL 15 MINUTE
         """
     )
     connection.commit()
