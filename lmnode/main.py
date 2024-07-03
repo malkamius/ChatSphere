@@ -60,7 +60,7 @@ def fetch_previous_messages(config, session_id):
         
         
         total_length = 0
-        max_length = 4000
+        max_length = 10000
 
         for msg in cursor:
             # Add the user message

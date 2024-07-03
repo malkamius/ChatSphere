@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import uuid
 
 from flask import Flask, session, send_from_directory, request, redirect, url_for, render_template
 from flask_login import LoginManager
@@ -146,11 +147,11 @@ def run():
             user = user_manager.get_user_by_email(users_email)
             
             if user is None:
+                confirmation_token = str(uuid.uuid4())
                 user = user_manager.create_user(
                     email=users_email,
-                    name=users_name,
                     password=bcrypt.generate_password_hash(os.urandom(24)).decode('utf-8'),
-                    picture=picture
+                    confirmation_token=confirmation_token
                 )
                 user.email_confirmed = True
                 user_manager.update_user(user)
@@ -161,6 +162,14 @@ def run():
 
     google_provider_cfg = get_google_provider_cfg()
 
+    @app.route('/privacy')
+    def handler_privacy():
+        return render_template("privacy.html")
+    
+    @app.route('/tos')
+    def handler_tos():
+        return render_template("tos.html")
+    
     home_page = HomePage.as_view("Home", {'config': config, 'id_config': id_config, 'logger': logger}, "index.html")
     register_page = RegisterPage.as_view("Register", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager, "mail": mail}, "register.html")
     login_page = LoginPage.as_view("Login", {'config': config, 'id_config': id_config, 'logger': logger, 'user_manager': user_manager}, "login.html")
@@ -191,11 +200,18 @@ def run():
         '/send_message': {'handler': handler_send_message, 'methods': ['POST']},
         '/check_messages': {'handler': handler_check_messages, 'methods': ['GET']},
         '/stop_processing': {'handler': handler_stop_processing, 'methods': ['POST']},
+        '/privacy': {'handler': handler_privacy, 'methods': ['GET']},
+        '/Privacy': {'handler': handler_privacy, 'methods': ['GET']},
+        '/tos': {'handler': handler_privacy, 'methods': ['GET']},
+        '/ToS': {'handler': handler_tos, 'methods': ['GET']},
     }
 
     # Register the routes with Flask
     for path, route_info in routes.items():
-        app.add_url_rule(path, view_func=route_info['handler'], endpoint=path, methods=route_info['methods'])
+        try:
+            app.add_url_rule(path, view_func=route_info['handler'], endpoint=path, methods=route_info['methods'])
+        except Exception as e:
+            logger.error(f"Failed to add route for {path}: {e}")
 
     @app.route('/favicon.ico')
     def favicon():
